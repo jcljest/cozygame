@@ -10,7 +10,7 @@ SCREEN_HEIGHT = 540
 FPS = 60
 
 # Movement
-PLAYER_SPEED = 220  # pixels per second
+PLAYER_SPEED = 250  # pixels per second
 
 # Asset paths (replace with your own)
 ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
@@ -19,11 +19,16 @@ BACKGROUND_IMAGE_PATH = ASSETS_DIR / "background.png"
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, pos, size=(64, 96)):
+    def __init__(self, pos, size=(86, 96)):
         super().__init__()
-        self.image = load_or_placeholder(PLAYER_IMAGE_PATH, size, (240, 200, 60))
+        self.original_image = load_or_placeholder(
+            PLAYER_IMAGE_PATH, size, (240, 200, 60)
+        )
+        self.image = self.original_image
         self.rect = self.image.get_rect(topleft=pos)
+
         self.velocity = pygame.Vector2(0, 0)
+        self.facing_right = True  # or False, depending on your sprite
 
     def handle_input(self):
         keys = pygame.key.get_pressed()
@@ -31,8 +36,10 @@ class Player(pygame.sprite.Sprite):
         self.velocity.y = 0
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             self.velocity.x = -1
+            self.facing_right = False
         if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
             self.velocity.x = 1
+            self.facing_right = True
         if keys[pygame.K_UP] or keys[pygame.K_w]:
             self.velocity.y = -1
         if keys[pygame.K_DOWN] or keys[pygame.K_s]:
@@ -61,6 +68,11 @@ class Player(pygame.sprite.Sprite):
                         self.rect.bottom = collider.top
                     elif self.velocity.y < 0:
                         self.rect.top = collider.bottom
+
+    def update_image(self):
+        self.image = self.original_image
+        if self.facing_right:
+            self.image = pygame.transform.flip(self.original_image, True, False)
 
 
 class World:
@@ -118,6 +130,7 @@ def main():
 
         player.handle_input()
         player.move(dt, world.colliders)
+        player.update_image()
 
         world.draw(screen)
         screen.blit(player.image, player.rect.topleft)
