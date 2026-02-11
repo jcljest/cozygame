@@ -47,32 +47,19 @@ class Player(pygame.sprite.Sprite):
         if self.velocity.length_squared() > 0:
             self.velocity = self.velocity.normalize()
 
-    def move(self, dt, colliders):
-        # Move on X axis
-        self.rect.x += int(self.velocity.x * PLAYER_SPEED * dt)
-        self.resolve_collisions(colliders, axis="x")
-        # Move on Y axis
-        self.rect.y += int(self.velocity.y * PLAYER_SPEED * dt)
-        self.resolve_collisions(colliders, axis="y")
+def move(self, dt, world):
+    dx = int(self.velocity.x * PLAYER_SPEED * dt)
+    dy = int(self.velocity.y * PLAYER_SPEED * dt)
 
-    def resolve_collisions(self, colliders, axis):
-        for collider in colliders:
-            if self.rect.colliderect(collider):
-                if axis == "x":
-                    if self.velocity.x > 0:
-                        self.rect.right = collider.left
-                    elif self.velocity.x < 0:
-                        self.rect.left = collider.right
-                else:
-                    if self.velocity.y > 0:
-                        self.rect.bottom = collider.top
-                    elif self.velocity.y < 0:
-                        self.rect.top = collider.bottom
+    # Move X
+    self.rect.x += dx
+    if not self.can_move(world):
+        self.rect.x -= dx
 
-    def update_image(self):
-        self.image = self.original_image
-        if self.facing_right:
-            self.image = pygame.transform.flip(self.original_image, True, False)
+    # Move Y
+    self.rect.y += dy
+    if not self.can_move(world):
+        self.rect.y -= dy
 
 
 class World:
@@ -82,7 +69,9 @@ class World:
             (SCREEN_WIDTH, SCREEN_HEIGHT),
             (40, 48, 56),
         )
-        self.colliders = self._build_colliders()
+        self.walk_mask = pygame.image.load(
+            ASSETS_DIR / "walk_mask.png"
+        ).convert_alpha()
 
     def _build_colliders(self):
         # Placeholder walls; replace with your own layout or imported hitboxes
@@ -129,7 +118,7 @@ def main():
                 running = False
 
         player.handle_input()
-        player.move(dt, world.colliders)
+        player.move(dt, world)
         player.update_image()
 
         world.draw(screen)
