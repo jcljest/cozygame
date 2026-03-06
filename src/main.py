@@ -30,6 +30,12 @@ class Player(pygame.sprite.Sprite):
         self.velocity = pygame.Vector2(0, 0)
         self.facing_right = True  # or False, depending on your sprite
 
+    def update_image(self):
+        if self.facing_right:
+            self.image = self.original_image
+        else:
+            self.image = pygame.transform.flip(self.original_image, True, False)
+
     def handle_input(self):
         keys = pygame.key.get_pressed()
         self.velocity.x = 0
@@ -47,19 +53,33 @@ class Player(pygame.sprite.Sprite):
         if self.velocity.length_squared() > 0:
             self.velocity = self.velocity.normalize()
 
-def move(self, dt, world):
-    dx = int(self.velocity.x * PLAYER_SPEED * dt)
-    dy = int(self.velocity.y * PLAYER_SPEED * dt)
+    def move(self, dt, world):
+        dx = int(self.velocity.x * PLAYER_SPEED * dt)
+        dy = int(self.velocity.y * PLAYER_SPEED * dt)
 
-    # Move X
-    self.rect.x += dx
-    if not self.can_move(world):
-        self.rect.x -= dx
+        # Move X
+        self.rect.x += dx
+        if not self.can_move(world):
+            self.rect.x -= dx
 
-    # Move Y
-    self.rect.y += dy
-    if not self.can_move(world):
-        self.rect.y -= dy
+        # Move Y
+        self.rect.y += dy
+        if not self.can_move(world):
+            self.rect.y -= dy
+    
+    def can_move(self, world):
+        # check player's feet position
+        foot_x = self.rect.centerx
+        foot_y = self.rect.bottom
+
+        if not world.is_walkable(foot_x, foot_y):
+            return False
+
+        for rect in world.colliders:
+            if self.rect.colliderect(rect):
+                return False
+
+        return True
 
 
 class World:
@@ -69,9 +89,27 @@ class World:
             (SCREEN_WIDTH, SCREEN_HEIGHT),
             (40, 48, 56),
         )
-        self.walk_mask = pygame.image.load(
-            ASSETS_DIR / "walk_mask.png"
-        ).convert_alpha()
+
+        mask = pygame.image.load(ASSETS_DIR / "walk_mask.png").convert()
+
+        self.walk_mask = pygame.transform.scale(
+            mask,
+            (SCREEN_WIDTH, SCREEN_HEIGHT // 2)
+        )
+
+        self.colliders = self._build_colliders()
+
+        self.mask_offset_y = SCREEN_HEIGHT // 2
+    
+    def is_walkable(self, x, y):
+        mask_y = y - self.mask_offset_y
+        if x < 0 or mask_y < 0 or x >= SCREEN_WIDTH or mask_y >= SCREEN_HEIGHT // 2:
+            return False
+
+        color = self.walk_mask.get_at((int(x), int(mask_y)))
+
+        # black = walkable
+        return color.r < 10 and color.g < 10 and color.b < 10
 
     def _build_colliders(self):
         # Placeholder walls; replace with your own layout or imported hitboxes
@@ -87,6 +125,8 @@ class World:
         # Debug: draw placeholder hitboxes
         for rect in self.colliders:
             pygame.draw.rect(surface, (80, 120, 140), rect)
+
+            surface.blit(self.walk_mask, (0, self.mask_offset_y))
 
 
 
@@ -108,7 +148,7 @@ def main():
     clock = pygame.time.Clock()
 
     world = World()
-    player = Player((120, 120))
+    player = Player((440, 360))
 
     running = True
     while running:
